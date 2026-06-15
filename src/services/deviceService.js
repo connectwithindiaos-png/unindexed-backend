@@ -126,6 +126,14 @@ class DeviceService {
     );
     return result.rows;
   }
+
+  async cleanupDeadDevices(threshold) {
+    const result = await pool.query(
+      `DELETE FROM devices WHERE status = 'offline' AND updated_at < $1`,
+      [threshold]
+    );
+    return result.rowCount;
+  }
 }
 
 module.exports = new DeviceService();
