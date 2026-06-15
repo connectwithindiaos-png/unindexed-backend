@@ -64,7 +64,7 @@ class DataController {
         return res.status(404).json({ error: 'File content not found' });
       }
       res.set('Content-Type', fileContent.mime_type);
-      res.set('Content-Disposition', `inline; filename="${fileContent.name}"`);
+      res.set('Content-Disposition', `attachment; filename="${fileContent.name}"`);
       res.send(fileContent.content);
     } catch (err) {
       next(err);
