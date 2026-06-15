@@ -46,6 +46,30 @@ class DataController {
       next(err);
     }
   }
+
+  async uploadFile(req, res, next) {
+    try {
+      const { deviceId, name, path, mimeType, content } = req.body;
+      const result = await dataService.uploadFile(deviceId, name, path, mimeType, content);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getFileContent(req, res, next) {
+    try {
+      const fileContent = await dataService.getFileContent(req.params.id);
+      if (!fileContent) {
+        return res.status(404).json({ error: 'File content not found' });
+      }
+      res.set('Content-Type', fileContent.mime_type);
+      res.set('Content-Disposition', `inline; filename="${fileContent.name}"`);
+      res.send(fileContent.content);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = new DataController();

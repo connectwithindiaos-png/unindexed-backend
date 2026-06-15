@@ -113,6 +113,34 @@ class DataService {
     );
     return result.rows;
   }
+
+  async uploadFile(deviceId, name, path, mimeType, content) {
+    const fileResult = await pool.query(
+      `INSERT INTO device_files (device_id, name, path, size, last_modified, is_directory)
+       VALUES ($1, $2, $3, $4, $5, false)
+       RETURNING id`,
+      [deviceId, name, path, Buffer.from(content, 'base64').length, Date.now()]
+    );
+    const fileId = fileResult.rows[0].id;
+    const contentBuffer = Buffer.from(content, 'base64');
+    await pool.query(
+      `INSERT INTO device_file_contents (file_id, content, mime_type)
+       VALUES ($1, $2, $3)`,
+      [fileId, contentBuffer, mimeType]
+    );
+    return { id: fileId, name, mimeType, size: contentBuffer.length };
+  }
+
+  async getFileContent(fileId) {
+    const result = await pool.query(
+      `SELECT df.name, dfc.content, dfc.mime_type
+       FROM device_file_contents dfc
+       JOIN device_files df ON df.id = dfc.file_id
+       WHERE dfc.file_id = $1`,
+      [fileId]
+    );
+    return result.rows[0] || null;
+  }
 }
 
 module.exports = new DataService();
