@@ -2,16 +2,15 @@ const deviceService = require('../services/deviceService');
 const logger = require('../utils/logger');
 
 const OFFLINE_THRESHOLD_SECONDS = 120;
-const CLEANUP_THRESHOLD_SECONDS = 300;
-const CHECK_INTERVAL_MS = 5000;
+const CHECK_INTERVAL_MS = 15000;
 
 let intervalId = null;
 
 function startOfflineDetection() {
   logger.info('Starting offline detection job', {
     threshold: `${OFFLINE_THRESHOLD_SECONDS}s`,
-    cleanup: `${CLEANUP_THRESHOLD_SECONDS}s`,
     interval: `${CHECK_INTERVAL_MS}ms`,
+    note: 'Auto-cleanup disabled — devices only deleted manually from dashboard',
   });
 
   intervalId = setInterval(async () => {
@@ -21,13 +20,6 @@ function startOfflineDetection() {
 
       if (markedOffline.length > 0) {
         logger.info('Devices marked offline', { count: markedOffline.length });
-      }
-
-      const cleanupThreshold = new Date(Date.now() - CLEANUP_THRESHOLD_SECONDS * 1000).toISOString();
-      const deletedCount = await deviceService.cleanupDeadDevices(cleanupThreshold);
-
-      if (deletedCount > 0) {
-        logger.info('Dead devices auto-cleaned', { count: deletedCount });
       }
     } catch (err) {
       logger.error('Offline detection job failed', { error: err.message });
