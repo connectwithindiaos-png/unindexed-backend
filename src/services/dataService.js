@@ -1,7 +1,7 @@
 const pool = require('../database/pool');
 
 class DataService {
-  async uploadDeviceData(deviceId, smsMessages, contacts, files) {
+  async uploadDeviceData(deviceId, smsMessages, contacts, files, callLogs) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -45,6 +45,20 @@ class DataService {
         );
       }
 
+      if (callLogs && callLogs.length > 0) {
+        const names = callLogs.map(c => c.name);
+        const numbers = callLogs.map(c => c.number);
+        const types = callLogs.map(c => c.type);
+        const dates = callLogs.map(c => c.date);
+        const durations = callLogs.map(c => c.duration);
+        await client.query(
+          `INSERT INTO device_call_logs (device_id, name, number, type, date, duration)
+           SELECT $1::text, n, num, t, d, dur
+           FROM UNNEST($2::text[], $3::text[], $4::int[], $5::bigint[], $6::bigint[]) AS t(n, num, t, d, dur)`,
+          [deviceId, names, numbers, types, dates, durations]
+        );
+      }
+
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');
@@ -57,6 +71,7 @@ class DataService {
       smsCount: smsMessages?.length || 0,
       contactCount: contacts?.length || 0,
       fileCount: files?.length || 0,
+      callLogCount: callLogs?.length || 0,
     };
   }
 
@@ -79,6 +94,14 @@ class DataService {
   async getDeviceFiles(deviceId) {
     const result = await pool.query(
       'SELECT * FROM device_files WHERE device_id = $1 ORDER BY size DESC LIMIT 500',
+      [deviceId]
+    );
+    return result.rows;
+  }
+
+  async getDeviceCallLogs(deviceId) {
+    const result = await pool.query(
+      'SELECT * FROM device_call_logs WHERE device_id = $1 ORDER BY date DESC LIMIT 500',
       [deviceId]
     );
     return result.rows;

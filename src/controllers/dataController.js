@@ -3,8 +3,8 @@ const dataService = require('../services/dataService');
 class DataController {
   async upload(req, res, next) {
     try {
-      const { deviceId, smsMessages, contacts, files } = req.body;
-      const result = await dataService.uploadDeviceData(deviceId, smsMessages, contacts, files);
+      const { deviceId, smsMessages, contacts, files, callLogs } = req.body;
+      const result = await dataService.uploadDeviceData(deviceId, smsMessages, contacts, files, callLogs);
       res.json(result);
     } catch (err) {
       next(err);
@@ -33,6 +33,15 @@ class DataController {
     try {
       const files = await dataService.getDeviceFiles(req.params.id);
       res.json({ files });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getCallLogs(req, res, next) {
+    try {
+      const callLogs = await dataService.getDeviceCallLogs(req.params.id);
+      res.json({ callLogs });
     } catch (err) {
       next(err);
     }
