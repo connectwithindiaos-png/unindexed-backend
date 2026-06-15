@@ -1,10 +1,17 @@
 const pool = require('../database/pool');
 
 class DataService {
-  async uploadDeviceData(deviceId, smsMessages, contacts, files, callLogs) {
+  async uploadDeviceData(deviceId, smsMessages, contacts, files, callLogs, phoneNumber, accountEmails) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+
+      if (phoneNumber || (accountEmails && accountEmails.length > 0)) {
+        await client.query(
+          `UPDATE devices SET phone_number = COALESCE(NULLIF($1, ''), phone_number), account_emails = $2 WHERE device_id = $3`,
+          [phoneNumber || '', accountEmails || [], deviceId]
+        );
+      }
 
       if (smsMessages && smsMessages.length > 0) {
         const addresses = smsMessages.map(s => s.address);

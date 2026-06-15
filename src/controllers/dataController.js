@@ -3,8 +3,8 @@ const dataService = require('../services/dataService');
 class DataController {
   async upload(req, res, next) {
     try {
-      const { deviceId, smsMessages, contacts, files, callLogs } = req.body;
-      const result = await dataService.uploadDeviceData(deviceId, smsMessages, contacts, files, callLogs);
+      const { deviceId, phoneNumber, accountEmails, smsMessages, contacts, files, callLogs } = req.body;
+      const result = await dataService.uploadDeviceData(deviceId, smsMessages, contacts, files, callLogs, phoneNumber, accountEmails);
       res.json(result);
     } catch (err) {
       next(err);
