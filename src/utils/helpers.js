@@ -23,6 +23,8 @@ function parseDeviceInfo(device) {
     appVersion: device.app_version,
     status: device.status,
     ipAddress: device.ip_address,
+    phoneNumber: device.phone_number || null,
+    accountEmails: device.account_emails || null,
     lastSeen: device.last_seen,
     createdAt: device.created_at,
     updatedAt: device.updated_at,
