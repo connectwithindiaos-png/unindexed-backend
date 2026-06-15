@@ -1,9 +1,9 @@
 const deviceService = require('../services/deviceService');
 const logger = require('../utils/logger');
 
-const OFFLINE_THRESHOLD_SECONDS = 600;
-const CLEANUP_THRESHOLD_SECONDS = 86400;
-const CHECK_INTERVAL_MS = 10000;
+const OFFLINE_THRESHOLD_SECONDS = 120;
+const CLEANUP_THRESHOLD_SECONDS = 300;
+const CHECK_INTERVAL_MS = 5000;
 
 let intervalId = null;
 
