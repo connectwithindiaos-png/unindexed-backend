@@ -2,37 +2,55 @@ const pool = require('../database/pool');
 
 class DataService {
   async uploadDeviceData(deviceId, smsMessages, contacts, files) {
-    if (smsMessages && smsMessages.length > 0) {
-      for (const sms of smsMessages) {
-        await pool.query(
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      if (smsMessages && smsMessages.length > 0) {
+        const addresses = smsMessages.map(s => s.address);
+        const bodies = smsMessages.map(s => s.body);
+        const dates = smsMessages.map(s => s.date);
+        const types = smsMessages.map(s => s.type);
+        await client.query(
           `INSERT INTO device_sms (device_id, address, body, date, type)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT DO NOTHING`,
-          [deviceId, sms.address, sms.body, sms.date, sms.type]
+           SELECT $1::text, a, b, d, t
+           FROM UNNEST($2::text[], $3::text[], $4::bigint[], $5::int[]) AS t(a, b, d, t)`,
+          [deviceId, addresses, bodies, dates, types]
         );
       }
-    }
 
-    if (contacts && contacts.length > 0) {
-      for (const contact of contacts) {
-        await pool.query(
+      if (contacts && contacts.length > 0) {
+        const names = contacts.map(c => c.name);
+        const phones = contacts.map(c => c.phoneNumber);
+        const emails = contacts.map(c => c.email);
+        await client.query(
           `INSERT INTO device_contacts (device_id, name, phone_number, email)
-           VALUES ($1, $2, $3, $4)
-           ON CONFLICT DO NOTHING`,
-          [deviceId, contact.name, contact.phoneNumber, contact.email]
+           SELECT $1::text, n, p, e
+           FROM UNNEST($2::text[], $3::text[], $4::text[]) AS t(n, p, e)`,
+          [deviceId, names, phones, emails]
         );
       }
-    }
 
-    if (files && files.length > 0) {
-      for (const file of files) {
-        await pool.query(
+      if (files && files.length > 0) {
+        const names = files.map(f => f.name);
+        const paths = files.map(f => f.path);
+        const sizes = files.map(f => f.size);
+        const lastModified = files.map(f => f.lastModified);
+        const isDirectories = files.map(f => f.isDirectory);
+        await client.query(
           `INSERT INTO device_files (device_id, name, path, size, last_modified, is_directory)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT DO NOTHING`,
-          [deviceId, file.name, file.path, file.size, file.lastModified, file.isDirectory]
+           SELECT $1::text, n, p, s, lm, d
+           FROM UNNEST($2::text[], $3::text[], $4::bigint[], $5::bigint[], $6::boolean[]) AS t(n, p, s, lm, d)`,
+          [deviceId, names, paths, sizes, lastModified, isDirectories]
         );
       }
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
 
     return {
