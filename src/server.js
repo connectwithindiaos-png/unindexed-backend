@@ -5,6 +5,7 @@ const rateLimit = require('express-rate-limit');
 const config = require('./config');
 const authRoutes = require('./routes/auth');
 const deviceRoutes = require('./routes/devices');
+const dataRoutes = require('./routes/data');
 const { errorHandler } = require('./middleware/errorHandler');
 const { startOfflineDetection } = require('./jobs/offlineDetection');
 const { autoMigrate } = require('./database/migrate');
@@ -44,6 +45,8 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/device', deviceRoutes);
 app.use('/api/devices', deviceRoutes);
+app.use('/api/device', dataRoutes);
+app.use('/api', dataRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
