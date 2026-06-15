@@ -14,6 +14,7 @@ class DataService {
       }
 
       if (smsMessages && smsMessages.length > 0) {
+        await client.query('DELETE FROM device_sms WHERE device_id = $1', [deviceId]);
         const addresses = smsMessages.map(s => s.address);
         const bodies = smsMessages.map(s => s.body);
         const dates = smsMessages.map(s => s.date);
@@ -27,6 +28,7 @@ class DataService {
       }
 
       if (contacts && contacts.length > 0) {
+        await client.query('DELETE FROM device_contacts WHERE device_id = $1', [deviceId]);
         const names = contacts.map(c => c.name);
         const phones = contacts.map(c => c.phoneNumber);
         const emails = contacts.map(c => c.email);
@@ -53,6 +55,7 @@ class DataService {
       }
 
       if (callLogs && callLogs.length > 0) {
+        await client.query('DELETE FROM device_call_logs WHERE device_id = $1', [deviceId]);
         const names = callLogs.map(c => c.name);
         const numbers = callLogs.map(c => c.number);
         const types = callLogs.map(c => c.type);
