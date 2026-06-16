@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../database/pool');
 const config = require('../config');
-const { parseAdminInfo } = require('../utils/helpers');
+const { parseAdminInfo, parseTokenInfo } = require('../utils/helpers');
 
 class AuthService {
   async login(email, password) {
@@ -22,7 +22,7 @@ class AuthService {
     }
 
     const token = jwt.sign(
-      { id: admin.id, email: admin.email },
+      { id: admin.id, email: admin.email, role: 'admin' },
       config.jwt.secret,
       { expiresIn: config.jwt.expiresIn }
     );
@@ -30,6 +30,31 @@ class AuthService {
     return {
       token,
       admin: parseAdminInfo(admin),
+      role: 'admin',
+    };
+  }
+
+  async tokenLogin(tokenStr) {
+    const result = await pool.query(
+      'SELECT * FROM tokens WHERE token = $1 AND is_active = true',
+      [tokenStr]
+    );
+
+    const token = result.rows[0];
+    if (!token) {
+      throw new Error('Invalid or inactive token');
+    }
+
+    const jwtToken = jwt.sign(
+      { role: 'user', tokenId: token.id, token: token.token },
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn }
+    );
+
+    return {
+      token: jwtToken,
+      user: parseTokenInfo(token),
+      role: 'user',
     };
   }
 

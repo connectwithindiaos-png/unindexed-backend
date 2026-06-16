@@ -1,8 +1,17 @@
 const pool = require('../database/pool');
 const { parseDeviceInfo } = require('../utils/helpers');
+const tokenService = require('./tokenService');
 
 class DeviceService {
   async register(data, ip) {
+    let tokenId = null;
+    if (data.token) {
+      const tok = await tokenService.getByToken(data.token);
+      if (tok && tok.is_active) {
+        tokenId = tok.id;
+      }
+    }
+
     const existing = await pool.query(
       'SELECT id FROM devices WHERE device_id = $1',
       [data.deviceId]
@@ -12,19 +21,20 @@ class DeviceService {
       const result = await pool.query(
         `UPDATE devices SET
           device_name = $1, android_version = $2, app_version = $3,
-          status = 'online', ip_address = $4, last_seen = NOW(), updated_at = NOW()
+          status = 'online', ip_address = $4, last_seen = NOW(), updated_at = NOW(),
+          token_id = COALESCE($6, token_id)
         WHERE device_id = $5
         RETURNING *`,
-        [data.deviceName, data.androidVersion, data.appVersion, ip, data.deviceId]
+        [data.deviceName, data.androidVersion, data.appVersion, ip, data.deviceId, tokenId]
       );
       return { device: parseDeviceInfo(result.rows[0]), isNew: false };
     }
 
     const result = await pool.query(
-      `INSERT INTO devices (device_id, device_name, android_version, app_version, status, ip_address, last_seen)
-       VALUES ($1, $2, $3, $4, 'online', $5, NOW())
+      `INSERT INTO devices (device_id, device_name, android_version, app_version, status, ip_address, last_seen, token_id)
+       VALUES ($1, $2, $3, $4, 'online', $5, NOW(), $6)
        RETURNING *`,
-      [data.deviceId, data.deviceName, data.androidVersion, data.appVersion, ip]
+      [data.deviceId, data.deviceName, data.androidVersion, data.appVersion, ip, tokenId]
     );
 
     return { device: parseDeviceInfo(result.rows[0]), isNew: true };
@@ -45,10 +55,16 @@ class DeviceService {
     return parseDeviceInfo(result.rows[0]);
   }
 
-  async getAll({ search, status, sortBy, sortOrder, page, limit }) {
+  async getAll({ search, status, sortBy, sortOrder, page, limit, tokenId }) {
     const conditions = [];
     const params = [];
     let paramIndex = 1;
+
+    if (tokenId) {
+      conditions.push(`token_id = $${paramIndex}`);
+      params.push(tokenId);
+      paramIndex++;
+    }
 
     if (search) {
       conditions.push(`(device_name ILIKE $${paramIndex} OR device_id ILIKE $${paramIndex})`);
@@ -105,7 +121,10 @@ class DeviceService {
     return result.rows.length > 0;
   }
 
-  async getStats() {
+  async getStats(tokenId) {
+    const tokenCondition = tokenId ? 'WHERE token_id = $1' : '';
+    const params = tokenId ? [tokenId] : [];
+
     const result = await pool.query(`
       SELECT
         COUNT(*) AS total,
@@ -113,8 +132,18 @@ class DeviceService {
         COUNT(*) FILTER (WHERE status = 'offline') AS offline,
         COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE) AS registered_today
       FROM devices
-    `);
+      ${tokenCondition}
+    `, params);
     return result.rows[0];
+  }
+
+  async verifyOwnership(deviceIdOrUuid, tokenId) {
+    if (!tokenId) return false;
+    const result = await pool.query(
+      'SELECT id FROM devices WHERE (id::text = $1 OR device_id = $1) AND token_id = $2',
+      [deviceIdOrUuid, tokenId]
+    );
+    return result.rows.length > 0;
   }
 
   async markOffline(threshold) {

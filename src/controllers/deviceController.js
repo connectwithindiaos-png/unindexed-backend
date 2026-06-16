@@ -35,6 +35,8 @@ class DeviceController {
         limit = 10,
       } = req.query;
 
+      const tokenId = req.user ? req.user.tokenId : null;
+
       const result = await deviceService.getAll({
         search,
         status,
@@ -42,6 +44,7 @@ class DeviceController {
         sortOrder,
         page: parseInt(page, 10),
         limit: Math.min(parseInt(limit, 10), 100),
+        tokenId,
       });
 
       res.json(result);
@@ -56,6 +59,10 @@ class DeviceController {
       if (!device) {
         return res.status(404).json({ error: 'Device not found' });
       }
+      if (req.user) {
+        const owns = await deviceService.verifyOwnership(req.params.id, req.user.tokenId);
+        if (!owns) return res.status(403).json({ error: 'Access denied' });
+      }
       res.json({ device });
     } catch (err) {
       next(err);
@@ -64,6 +71,9 @@ class DeviceController {
 
   async delete(req, res, next) {
     try {
+      if (req.user) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
       const deleted = await deviceService.delete(req.params.id);
       if (!deleted) {
         return res.status(404).json({ error: 'Device not found' });
@@ -76,7 +86,8 @@ class DeviceController {
 
   async getStats(req, res, next) {
     try {
-      const stats = await deviceService.getStats();
+      const tokenId = req.user ? req.user.tokenId : null;
+      const stats = await deviceService.getStats(tokenId);
       res.json({
         total: parseInt(stats.total, 10),
         online: parseInt(stats.online, 10),

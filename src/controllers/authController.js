@@ -14,12 +14,22 @@ class AuthController {
     }
   }
 
+  async tokenLogin(req, res, next) {
+    try {
+      const { token } = req.body;
+      const result = await authService.tokenLogin(token);
+      res.json(result);
+    } catch (err) {
+      if (err.message === 'Invalid or inactive token') {
+        return res.status(401).json({ error: err.message });
+      }
+      next(err);
+    }
+  }
+
   async verify(req, res) {
-    const { admin } = req;
-    res.json({
-      admin: { id: admin.id, email: admin.email },
-      valid: true,
-    });
+    const auth = req.admin || req.user;
+    res.json({ auth, valid: true });
   }
 }
 

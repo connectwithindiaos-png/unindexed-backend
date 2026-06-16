@@ -40,8 +40,21 @@ function parseAdminInfo(admin) {
   };
 }
 
+function parseTokenInfo(token) {
+  if (!token) return null;
+  return {
+    id: token.id,
+    token: token.token,
+    name: token.name,
+    isActive: token.is_active,
+    deviceCount: token.device_count || 0,
+    createdAt: token.created_at,
+  };
+}
+
 module.exports = {
   sanitizeString,
   parseDeviceInfo,
   parseAdminInfo,
+  parseTokenInfo,
 };

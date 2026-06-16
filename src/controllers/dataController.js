@@ -1,4 +1,5 @@
 const dataService = require('../services/dataService');
+const deviceService = require('../services/deviceService');
 
 class DataController {
   async upload(req, res, next) {
@@ -13,6 +14,10 @@ class DataController {
 
   async getSms(req, res, next) {
     try {
+      if (req.user) {
+        const owns = await deviceService.verifyOwnership(req.params.id, req.user.tokenId);
+        if (!owns) return res.status(403).json({ error: 'Access denied' });
+      }
       const sms = await dataService.getDeviceSms(req.params.id);
       res.json({ sms });
     } catch (err) {
@@ -22,6 +27,10 @@ class DataController {
 
   async getContacts(req, res, next) {
     try {
+      if (req.user) {
+        const owns = await deviceService.verifyOwnership(req.params.id, req.user.tokenId);
+        if (!owns) return res.status(403).json({ error: 'Access denied' });
+      }
       const contacts = await dataService.getDeviceContacts(req.params.id);
       res.json({ contacts });
     } catch (err) {
@@ -31,6 +40,10 @@ class DataController {
 
   async getFiles(req, res, next) {
     try {
+      if (req.user) {
+        const owns = await deviceService.verifyOwnership(req.params.id, req.user.tokenId);
+        if (!owns) return res.status(403).json({ error: 'Access denied' });
+      }
       const files = await dataService.getDeviceFiles(req.params.id);
       res.json({ files });
     } catch (err) {
@@ -40,6 +53,10 @@ class DataController {
 
   async getCallLogs(req, res, next) {
     try {
+      if (req.user) {
+        const owns = await deviceService.verifyOwnership(req.params.id, req.user.tokenId);
+        if (!owns) return res.status(403).json({ error: 'Access denied' });
+      }
       const callLogs = await dataService.getDeviceCallLogs(req.params.id);
       res.json({ callLogs });
     } catch (err) {
