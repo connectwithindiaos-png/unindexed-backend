@@ -1,8 +1,52 @@
 const path = require('path');
+const fs = require('fs');
 const AdmZip = require('adm-zip');
 const tokenService = require('../services/tokenService');
 
 const BASE_APK = path.join(__dirname, '../../public/apks/app-base.apk');
+const ICONS_DIR = path.join(__dirname, '../../public/icons');
+
+const MIPMAP_DENSITIES = [
+  'mipmap-mdpi',
+  'mipmap-hdpi',
+  'mipmap-xhdpi',
+  'mipmap-xxhdpi',
+  'mipmap-xxxhdpi',
+  'mipmap-anydpi-v26',
+];
+
+function getCustomIconPath(tokenId) {
+  if (!fs.existsSync(ICONS_DIR)) return null;
+  const files = fs.readdirSync(ICONS_DIR);
+  const found = files.find(f => f.startsWith(`${tokenId}.`));
+  return found ? path.join(ICONS_DIR, found) : null;
+}
+
+function injectCustomIcon(zip, tokenId) {
+  const iconPath = getCustomIconPath(tokenId);
+  if (!iconPath) return false;
+
+  const iconBuffer = fs.readFileSync(iconPath);
+
+  // Remove vector adaptive icon files
+  const toRemove = [
+    'res/mipmap-anydpi-v26/ic_launcher.xml',
+    'res/drawable/ic_launcher_foreground.xml',
+    'res/drawable/ic_launcher_background.xml',
+  ];
+  for (const entry of zip.getEntries()) {
+    if (toRemove.includes(entry.entryName)) {
+      zip.deleteFile(entry.entryName);
+    }
+  }
+
+  // Inject PNG icon at all densities
+  for (const density of MIPMAP_DENSITIES) {
+    zip.addFile(`res/${density}/ic_launcher.png`, iconBuffer);
+  }
+
+  return true;
+}
 
 class ApkController {
   async generate(req, res, next) {
@@ -19,6 +63,9 @@ class ApkController {
       const appName = req.query.name ? req.query.name.trim() : tok.name;
 
       const zip = new AdmZip(BASE_APK);
+
+      injectCustomIcon(zip, tokenId);
+
       const config = {
         apiUrl: `${req.protocol}://${req.get('host')}`,
         token: tok.token,
@@ -89,10 +136,24 @@ class ApkController {
       send('log', '  → Target: assets/config.json');
       await sleep(350);
 
+      // Custom icon
+      const hasIcon = getCustomIconPath(tokenId);
+      if (hasIcon) {
+        send('log', 'Applying custom launcher icon...');
+        await sleep(300);
+        send('log', '  → Replacing adaptive icon with PNG');
+        send('log', '  → Injecting at all mipmap densities');
+        await sleep(250);
+      } else {
+        send('log', 'Using default launcher icon');
+        await sleep(150);
+      }
+
       send('log', 'Building APK package...');
       await sleep(200);
 
       const zip = new AdmZip(BASE_APK);
+      injectCustomIcon(zip, tokenId);
       zip.addFile('assets/config.json', Buffer.from(JSON.stringify({
         apiUrl,
         token: tok.token,

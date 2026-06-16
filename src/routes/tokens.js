@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const tokenController = require('../controllers/tokenController');
 const apkController = require('../controllers/apkController');
+const iconController = require('../controllers/iconController');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const { createTokenSchema } = require('../validators/tokenValidator');
@@ -17,5 +18,8 @@ router.patch('/:id/toggle', tokenController.toggleActive.bind(tokenController));
 router.delete('/:id', tokenController.delete.bind(tokenController));
 router.get('/:id/apk', apkController.generate.bind(apkController));
 router.get('/:id/apk/logs', apkController.streamLogs.bind(apkController));
+router.post('/:id/icon', iconController.upload.bind(iconController));
+router.get('/:id/icon', iconController.get.bind(iconController));
+router.delete('/:id/icon', iconController.delete.bind(iconController));
 
 module.exports = router;
