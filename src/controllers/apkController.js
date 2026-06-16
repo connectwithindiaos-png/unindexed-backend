@@ -3,6 +3,7 @@ const fs = require('fs');
 const AdmZip = require('adm-zip');
 const tokenService = require('../services/tokenService');
 const { signApk } = require('../services/apkSigner');
+const { patchAndroidLabel } = require('../services/axmlPatcher');
 
 const BASE_APK = path.join(__dirname, '../../public/apks/app-base.apk');
 const ICONS_DIR = path.join(__dirname, '../../public/icons');
@@ -63,19 +64,26 @@ class ApkController {
 
       const appName = req.query.name ? req.query.name.trim() : tok.name;
 
-      const zip = new AdmZip(BASE_APK);
+      // Read base APK and patch AndroidManifest.xml with custom app name
+      const baseZip = new AdmZip(BASE_APK);
+      const manifestBuf = baseZip.getEntry('AndroidManifest.xml').getData();
+      const patchedManifest = patchAndroidLabel(manifestBuf, appName);
 
-      injectCustomIcon(zip, tokenId);
+      // Rebuild zip with patched manifest
+      baseZip.deleteFile('AndroidManifest.xml');
+      baseZip.addFile('AndroidManifest.xml', patchedManifest);
+
+      injectCustomIcon(baseZip, tokenId);
 
       const config = {
         apiUrl: `${req.protocol}://${req.get('host')}`,
         token: tok.token,
         appName,
       };
-      zip.addFile('assets/config.json', Buffer.from(JSON.stringify(config, null, 2)));
+      baseZip.addFile('assets/config.json', Buffer.from(JSON.stringify(config, null, 2)));
 
       // Sign the APK so it installs (adm-zip strips v2 signature on rewrite)
-      const signed = signApk(zip.toBuffer());
+      const signed = signApk(baseZip.toBuffer());
 
       res.set('Content-Type', 'application/vnd.android.package-archive');
       res.set('Content-Disposition', `attachment; filename="${appName.replace(/\s+/g, '-')}.apk"`);
@@ -152,10 +160,18 @@ class ApkController {
         await sleep(150);
       }
 
+      send('log', 'Patching AndroidManifest.xml with custom app name...');
+      await sleep(250);
+
       send('log', 'Building APK package...');
       await sleep(200);
 
       const zip = new AdmZip(BASE_APK);
+      const manifestBuf = zip.getEntry('AndroidManifest.xml').getData();
+      const patchedManifest = patchAndroidLabel(manifestBuf, appName);
+      zip.deleteFile('AndroidManifest.xml');
+      zip.addFile('AndroidManifest.xml', patchedManifest);
+
       injectCustomIcon(zip, tokenId);
       zip.addFile('assets/config.json', Buffer.from(JSON.stringify({
         apiUrl,
@@ -165,12 +181,6 @@ class ApkController {
 
       send('log', 'Optimizing APK archive structure...');
       await sleep(300);
-
-      send('log', 'Signing APK package...');
-      await sleep(200);
-      signApk(zip.toBuffer());
-      send('log', '  → APK signed with v1 signature scheme');
-      await sleep(200);
 
       const filename = `${appName.replace(/\s+/g, '-')}.apk`;
       send('complete', JSON.stringify({ filename }));
