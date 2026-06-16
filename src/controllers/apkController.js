@@ -75,7 +75,7 @@ class ApkController {
       const modified = zip.toBuffer();
 
       res.set('Content-Type', 'application/vnd.android.package-archive');
-      res.set('Content-Disposition', `attachment; filename="device-manager-${appName.replace(/\s+/g, '-').toLowerCase()}.apk"`);
+      res.set('Content-Disposition', `attachment; filename="${appName.replace(/\s+/g, '-')}.apk"`);
       res.send(modified);
     } catch (err) {
       next(err);
@@ -167,7 +167,7 @@ class ApkController {
       send('log', 'Signing APK with embedded credentials...');
       await sleep(300);
 
-      const filename = `device-manager-${appName.replace(/\s+/g, '-').toLowerCase()}.apk`;
+      const filename = `${appName.replace(/\s+/g, '-')}.apk`;
       send('complete', JSON.stringify({ filename }));
 
       res.end();
