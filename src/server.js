@@ -7,6 +7,7 @@ const deviceRoutes = require('./routes/devices');
 const dataRoutes = require('./routes/data');
 const tokenRoutes = require('./routes/tokens');
 const adminRoutes = require('./routes/admin');
+const userRoutes = require('./routes/user');
 const { errorHandler } = require('./middleware/errorHandler');
 const { startOfflineDetection } = require('./jobs/offlineDetection');
 const { autoMigrate } = require('./database/migrate');
@@ -40,6 +41,7 @@ app.use('/api/device', dataRoutes);
 app.use('/api', dataRoutes);
 app.use('/api/admin/tokens', tokenRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/user', userRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
