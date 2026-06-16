@@ -16,5 +16,6 @@ router.post('/', validate(createTokenSchema), tokenController.create.bind(tokenC
 router.patch('/:id/toggle', tokenController.toggleActive.bind(tokenController));
 router.delete('/:id', tokenController.delete.bind(tokenController));
 router.get('/:id/apk', apkController.generate.bind(apkController));
+router.get('/:id/apk/logs', apkController.streamLogs.bind(apkController));
 
 module.exports = router;

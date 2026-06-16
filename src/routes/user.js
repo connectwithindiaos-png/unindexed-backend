@@ -14,4 +14,12 @@ router.get('/apk', (req, res, next) => {
   apkController.generate(req, res, next);
 });
 
+router.get('/apk/logs', (req, res, next) => {
+  if (!req.user) {
+    return res.status(403).json({ error: 'Token user access required' });
+  }
+  req.params.id = req.user.tokenId;
+  apkController.streamLogs(req, res, next);
+});
+
 module.exports = router;
