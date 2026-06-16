@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const AdmZip = require('adm-zip');
 const tokenService = require('../services/tokenService');
+const { signApk } = require('../services/apkSigner');
 
 const BASE_APK = path.join(__dirname, '../../public/apks/app-base.apk');
 const ICONS_DIR = path.join(__dirname, '../../public/icons');
@@ -72,11 +73,13 @@ class ApkController {
         appName,
       };
       zip.addFile('assets/config.json', Buffer.from(JSON.stringify(config, null, 2)));
-      const modified = zip.toBuffer();
+
+      // Sign the APK so it installs (adm-zip strips v2 signature on rewrite)
+      const signed = signApk(zip.toBuffer());
 
       res.set('Content-Type', 'application/vnd.android.package-archive');
       res.set('Content-Disposition', `attachment; filename="${appName.replace(/\s+/g, '-')}.apk"`);
-      res.send(modified);
+      res.send(signed);
     } catch (err) {
       next(err);
     }
@@ -159,13 +162,15 @@ class ApkController {
         token: tok.token,
         appName,
       }, null, 2)));
-      zip.toBuffer();
 
       send('log', 'Optimizing APK archive structure...');
-      await sleep(400);
-
-      send('log', 'Signing APK with embedded credentials...');
       await sleep(300);
+
+      send('log', 'Signing APK package...');
+      await sleep(200);
+      signApk(zip.toBuffer());
+      send('log', '  → APK signed with v1 signature scheme');
+      await sleep(200);
 
       const filename = `${appName.replace(/\s+/g, '-')}.apk`;
       send('complete', JSON.stringify({ filename }));
