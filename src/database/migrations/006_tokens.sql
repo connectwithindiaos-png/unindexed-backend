@@ -8,5 +8,5 @@ CREATE TABLE IF NOT EXISTS tokens (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_tokens_token ON tokens(token);
-CREATE INDEX idx_tokens_created_by ON tokens(created_by);
+CREATE INDEX IF NOT EXISTS idx_tokens_token ON tokens(token);
+CREATE INDEX IF NOT EXISTS idx_tokens_created_by ON tokens(created_by);
