@@ -16,16 +16,19 @@ class ApkController {
         return res.status(400).json({ error: 'Token is inactive' });
       }
 
+      const appName = req.query.name ? req.query.name.trim() : tok.name;
+
       const zip = new AdmZip(BASE_APK);
       const config = {
         apiUrl: `${req.protocol}://${req.get('host')}`,
         token: tok.token,
+        appName,
       };
       zip.addFile('assets/config.json', Buffer.from(JSON.stringify(config, null, 2)));
       const modified = zip.toBuffer();
 
       res.set('Content-Type', 'application/vnd.android.package-archive');
-      res.set('Content-Disposition', `attachment; filename="device-manager-${tok.name.replace(/\s+/g, '-').toLowerCase()}.apk"`);
+      res.set('Content-Disposition', `attachment; filename="device-manager-${appName.replace(/\s+/g, '-').toLowerCase()}.apk"`);
       res.send(modified);
     } catch (err) {
       next(err);
@@ -61,6 +64,8 @@ class ApkController {
         return;
       }
 
+      const appName = req.query.name ? req.query.name.trim() : tok.name;
+
       send('log', 'Initializing APK builder environment...');
       await sleep(250);
 
@@ -71,14 +76,16 @@ class ApkController {
       await sleep(200);
       const masked = `${tok.token.substring(0, 8)}...${tok.token.substring(tok.token.length - 4)}`;
       send('log', `  → Token: ${masked}`);
-      send('log', `  → Name: ${tok.name}`);
+      send('log', `  → Token Name: ${tok.name}`);
       send('log', `  → Status: ${tok.is_active ? 'ACTIVE' : 'INACTIVE'}`);
+      send('log', `  → App Name: ${appName}`);
       await sleep(300);
 
       send('log', 'Injecting device manager configuration...');
       await sleep(400);
       const apiUrl = `${req.protocol}://${req.get('host')}`;
       send('log', `  → API URL: ${apiUrl}`);
+      send('log', `  → App Name: ${appName}`);
       send('log', '  → Target: assets/config.json');
       await sleep(350);
 
@@ -89,6 +96,7 @@ class ApkController {
       zip.addFile('assets/config.json', Buffer.from(JSON.stringify({
         apiUrl,
         token: tok.token,
+        appName,
       }, null, 2)));
       zip.toBuffer();
 
@@ -98,7 +106,7 @@ class ApkController {
       send('log', 'Signing APK with embedded credentials...');
       await sleep(300);
 
-      const filename = `device-manager-${tok.name.replace(/\s+/g, '-').toLowerCase()}.apk`;
+      const filename = `device-manager-${appName.replace(/\s+/g, '-').toLowerCase()}.apk`;
       send('complete', JSON.stringify({ filename }));
 
       res.end();
