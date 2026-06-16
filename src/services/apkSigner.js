@@ -34,9 +34,10 @@ function createSf(manifestDigest) {
   return `Signature-Version: 1.0\r\nCreated-By: APK Signer\r\nSHA-256-Digest-Manifest: ${manifestDigest}\r\n\r\n`;
 }
 
-function createPkcs7(cert, privateKey, sfDigest) {
+function createPkcs7(cert, privateKey, sfContent) {
   const p7 = forge.pkcs7.createSignedData();
-  p7.content = forge.util.createBuffer(sfDigest);
+  // content must be the actual .SF file bytes, not a digest
+  p7.content = forge.util.createBuffer(sfContent);
   p7.addCertificate(cert);
   p7.addSigner({
     key: privateKey,
@@ -44,7 +45,8 @@ function createPkcs7(cert, privateKey, sfDigest) {
     digestAlgorithm: forge.pki.oids.sha256,
     authenticatedAttributes: [
       { type: forge.pki.oids.contentType, value: forge.pki.oids.data },
-      { type: forge.pki.oids.messageDigest, value: sfDigest },
+      // required by forge, but auto-populated during sign() from p7.content
+      { type: forge.pki.oids.messageDigest, value: '' },
       { type: forge.pki.oids.signingTime, value: new Date().toISOString() },
     ],
   });
@@ -80,10 +82,9 @@ function signApk(apkBuffer) {
 
   // Create CERT.SF
   const sfContent = createSf(manifestDigest);
-  const sfDigest = crypto.createHash('sha256').update(sfContent).digest('base64');
 
-  // Create CERT.RSA (PKCS7)
-  const rsaData = createPkcs7(cert, privateKey, sfDigest);
+  // Create CERT.RSA (PKCS7) — signs the .SF content bytes
+  const rsaData = createPkcs7(cert, privateKey, sfContent);
 
   // Add signature files back
   zip.addFile('META-INF/MANIFEST.MF', Buffer.from(manifestContent, 'utf8'));
